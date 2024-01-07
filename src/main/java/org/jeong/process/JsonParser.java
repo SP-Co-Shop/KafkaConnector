@@ -25,7 +25,7 @@ public class JsonParser {
 
         LocalDateTime dateTime = LocalDateTime.parse(entry.getTime());
 
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd/HH");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd/HH");
         String customFormattedString = dateTime.format(formatter);
 
         entry.setTime(customFormattedString);
