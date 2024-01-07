@@ -1,0 +1,93 @@
+buildscript {
+    ext {
+        v_gradle_shadow = '7.1.2'
+    }
+    repositories {
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+    dependencies {
+        classpath "gradle.plugin.com.github.johnrengelman:shadow:${v_gradle_shadow}"
+    }
+}
+
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version "$v_gradle_shadow"
+}
+
+group = 'org.jeong'
+version = '1.0-SNAPSHOT'
+description = "kafka hdfs sink connector"
+
+repositories {
+    mavenCentral()
+}
+
+/* Version Settings */
+ext {
+    v_kafka = '3.2.0'
+    v_hadoop = '3.2.3'
+    v_netty = '4.1.68.Final'
+    v_junit = '5.7.0'
+    v_common_lang3 = '3.4'
+    v_slf4j = '1.7.36'
+    v_log4j = '2.20.0'
+}
+
+dependencies {
+
+    /* Kafka */
+    implementation group: 'org.apache.kafka', name: 'kafka-clients', version: v_kafka
+    implementation group: 'org.apache.kafka', name: 'connect-api', version: v_kafka
+
+    /* HDFS */
+    implementation("org.apache.hadoop:hadoop-hdfs:$v_hadoop") {
+        exclude group: 'io.netty', module: 'netty-all'
+    }
+    implementation group: 'io.netty', name: 'netty-all', version: v_netty
+    implementation group: 'org.apache.hadoop', name: 'hadoop-common', version: v_hadoop
+    implementation group: 'org.apache.hadoop', name: 'hadoop-hdfs-client', version: v_hadoop
+
+    /* Util */
+    implementation group: 'org.apache.commons', name: 'commons-lang3', version: v_common_lang3
+
+    /* Logging */
+    implementation group: 'org.slf4j', name: 'slf4j-api', version: v_slf4j
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: v_log4j
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: v_log4j
+    testImplementation group: 'org.apache.logging.log4j', name: 'log4j-slf4j-impl', version: v_log4j
+
+    /* Test */
+    testImplementation "org.junit.jupiter:junit-jupiter-api:$v_junit"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$v_junit"
+}
+
+sourceSets {
+    main {
+        resources {
+            srcDirs "src/main/resources"
+        }
+    }
+}
+
+tasks {
+    processResources {
+        duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.INCLUDE
+    }
+}
+
+jar {
+    finalizedBy shadowJar
+    manifest {
+        attributes(
+                "Kafka-Custom-Connect-Version": project.version,
+                "Kafka-Version": v_kafka,
+                "Created-By": "gj",
+                "Created-At": new Date().format("YYYYMMDDHHmm")
+        )
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
