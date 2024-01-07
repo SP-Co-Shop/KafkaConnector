@@ -8,10 +8,8 @@ import lombok.Setter;
 
 import java.util.Map;
 
-@AllArgsConstructor
-@Getter
-@Setter
-public class Record {
+
+public class RecordEntry {
 
     @JsonProperty("traceId")
     private String traceId;
@@ -32,4 +30,11 @@ public class Record {
     @JsonProperty("elapsedTimeMillis")
     private long elapsedTimeMillis;
 
+    public void setTime(String time) {
+        this.time = time;
+    }
+
+    public String getTime() {
+        return time;
+    }
 }
