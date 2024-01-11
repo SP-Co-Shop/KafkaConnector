@@ -36,8 +36,12 @@ ext {
 
 dependencies {
 
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.30'
+
+
     /* Kafka */
     implementation group: 'org.apache.kafka', name: 'kafka-clients', version: v_kafka
+    testImplementation group: 'org.apache.kafka', name: 'kafka-clients', version: v_kafka
     implementation group: 'org.apache.kafka', name: 'connect-api', version: v_kafka
 
     /* HDFS */
