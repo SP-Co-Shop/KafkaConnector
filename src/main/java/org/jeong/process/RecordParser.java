@@ -3,7 +3,7 @@ package org.jeong.process;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.connect.sink.SinkRecord;
-import org.jeong.dto.RecordEntry;
+import org.jeong.entry.RecordEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
