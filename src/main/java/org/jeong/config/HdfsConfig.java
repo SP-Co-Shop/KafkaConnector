@@ -7,21 +7,14 @@ import java.util.Map;
 
 public class HdfsConfig extends AbstractConfig {
 
-    /* HDFS 실제 위치 */
     private static final String HDFS_PATH = "hdfs.path";
 
-    /* HDFS DOC */
     private static final String HDFS_PATH_DOC = "hdfs.path";
 
     public HdfsConfig(Map<String, String> props) { super(CONFIG, props);}
 
     public static final ConfigDef CONFIG = new ConfigDef()
-            .define(
-                    HDFS_PATH,
-                    ConfigDef.Type.STRING,
-                    ConfigDef.Importance.HIGH,
-                    HDFS_PATH_DOC
-            );
+            .define(HDFS_PATH, ConfigDef.Type.STRING, ConfigDef.Importance.HIGH, HDFS_PATH_DOC);
 
     public String getHdfsPath() { return this.getString(HDFS_PATH);}
 }
