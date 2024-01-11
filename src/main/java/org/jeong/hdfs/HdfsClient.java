@@ -1,86 +1,109 @@
 package org.jeong.hdfs;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.jeong.config.HdfsConfig;
-import org.jeong.dto.Record;
-import org.jeong.process.Parser;
+import org.jeong.entry.RecordEntry;
+import org.jeong.process.RecordParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class HdfsClient {
-    private HdfsConfig config;
-
-    private Logger logger = LoggerFactory.getLogger(this.getClass().getName());
+    private final HdfsConfig config;
+    private final Logger logger = LoggerFactory.getLogger(this.getClass().getName());
     private FileSystem fileSystem;
+    private DateTimeFormatter formatter;
 
-    private Parser parser;
-
-    private Map<String, FSDataOutputStreamWrapper> outs = new HashMap<String, FSDataOutputStreamWrapper>();
+    private final Map<String, FSDataOutputStreamWrapper> outs = new HashMap<String, FSDataOutputStreamWrapper>();
 
     public HdfsClient(HdfsConfig config) {
         this.config = config;
     }
 
-    public void init() throws IOException{
-        this.fileSystem = FileSystem.newInstance(buildConfig());
 
+    public void init() throws IOException {
+        this.fileSystem = FileSystem.newInstance(buildConfig());
     }
 
-
-    public void write(List<SinkRecord> records, Integer partition){
+    public void write(List<SinkRecord> records, String topic, Integer partition){
+        formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd/HH");
         records.forEach(record ->{
+
             try {
-                /**
-                 * @param record Parsing
-                 * */
-                Record recordData = parser.parse(record);
+                RecordEntry recordEntry = RecordParser.parse(record);
+                String convertingTime = LocalDateTime.parse(recordEntry.getTime(),DateTimeFormatter.ISO_LOCAL_DATE_TIME).format(formatter);
 
-                String hdfsPath = String.format("%s/%s",
+                String hdfsPath = String.format("%s/%s/%s",
                         this.config.getHdfsPath(),
-                        String.format("data-%s.text",partition));
+                        convertingTime,
+                        String.format("log-%s.text", partition));
 
-                FSDataOutputStreamWrapper out = getOutputStream(hdfsPath);
-
-
-                out.write(record.toString());
-                out.write("\n");
-
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+                writeToHDFS(hdfsPath,record.value().toString());
+            } catch (IOException | ParseException e) {
+                logger.error("Failed to write record to HDFS. Topic: {}, Partition: {}, Error: {}", topic, partition, e.getMessage(), e);
             }
         });
     }
 
-    private FSDataOutputStreamWrapper getOutputStream(String path) throws IOException {
+    private void writeToHDFS(String path, String data) throws IOException {
+        FSDataOutputStreamWrapper out = getOutputStream(path);
+        if (out == null) {
+            logger.error("OutputStream not found for path: {}", path);
+            throw new IOException("OutputStream not found for path: " + path);
+        }
+        out.write(data);
+        out.write("\n");
+    }
 
-        /* 해당 Path 키를 가지고 있지 않을 시 */
-        if (!outs.containsKey(path)) {
+    private FSDataOutputStreamWrapper getOutputStream(String path) throws IOException {
+        FSDataOutputStreamWrapper outWrapper = outs.get(path);
+
+        if (outWrapper == null) {
             Path hdfsPath = new Path(path);
 
-            /* 파일이 존재 하지 않으면 파일 생성 */
-            if (!fileSystem.exists(hdfsPath)) {
-                fileSystem.createNewFile(hdfsPath);
+            logger.info("hdfsPath : {}",hdfsPath.toString());
+            try {
+                FSDataOutputStream fsOut = null;
+                if (!fileSystem.exists(hdfsPath)) {
+                    logger.info("Creating new file at path: {}", path);
+                    fsOut = fileSystem.create(hdfsPath, true);
+                } else {
+                    logger.info("Appending to existing file at path: {}", path);
+                    fsOut = fileSystem.append(hdfsPath);
+                }
+
+                if (fsOut == null) {
+                    throw new IOException("Failed to create or append to file at path: " + path);
+                }
+
+                outWrapper = new FSDataOutputStreamWrapper(fsOut);
+                outs.put(path, outWrapper);
+            } catch (IOException e) {
+                logger.error("Error while accessing HDFS for path: {}, Error: {}", path, e.getMessage(), e);
+                throw e;
             }
-            /* 해당 파일에 대해 hdfs output stream 생성 */
-            outs.put(path, new FSDataOutputStreamWrapper(fileSystem.append(hdfsPath)));
         }
-        return outs.get(path);
+
+        return outWrapper;
     }
 
     public Configuration buildConfig() {
         Configuration hadoopConfig = new Configuration();
         String classpath = System.getProperty("java.class.path");
-        logger.info("==========" + classpath);
+        logger.info("========== {}",classpath);
         hadoopConfig.addResource(Thread.currentThread().getContextClassLoader().getResourceAsStream("hadoop/core-site.xml"));
         hadoopConfig.addResource(Thread.currentThread().getContextClassLoader().getResourceAsStream("hadoop/hdfs-site.xml"));
         hadoopConfig.setInt("dfs.replication", 3);
@@ -92,7 +115,7 @@ public class HdfsClient {
         return hadoopConfig;
     }
 
-    public void close() throws IOException, InterruptedException {
+    public void close() throws InterruptedException {
 
         for (String path: outs.keySet()){
             closeOutputStream(path);
@@ -126,14 +149,14 @@ public class HdfsClient {
     }
 
     public void refreshOutputStream() {
-        for (String path: outs.keySet()) {
-            long streamOpenElapsed = new Date().getTime() - outs.get(path).getStreamOpenDate().getTime();
-            if (streamOpenElapsed > 60000) {
+        long currentTime = new Date().getTime();
+        for (Map.Entry<String, FSDataOutputStreamWrapper> entry : outs.entrySet()) {
+            long streamOpenElapsed = currentTime - entry.getValue().getStreamOpenDate().getTime();
+            if (streamOpenElapsed > 60000) { // 60초 이상 열려 있으면 닫음
                 try {
-                    closeOutputStream(path);
-                    outs.remove(path);
+                    closeOutputStream(entry.getKey());
                 } catch (Exception e) {
-                    logger.error("error occured when hdfs output stream close");
+                    logger.error("Error occurred when closing HDFS output stream for path: {}", entry.getKey(), e);
                 }
             }
         }
