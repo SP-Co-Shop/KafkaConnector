@@ -8,29 +8,21 @@ import java.util.jar.Manifest;
 
 public class JarMainFest {
 
-    private String project;
-
-    private String msg = "Pass";
     private String version = null;
 
     public JarMainFest(URL location, String project) {
-
-        this.project = project;
-
-        try{
-
+        try {
             File file = new File(location.toURI());
-
-            if (file.isFile()){
-                Manifest manifest = new JarFile(file).getManifest();
-                Attributes attributes = manifest.getMainAttributes();
-
-                this.version = attributes.getValue(this.project);
+            if (file.isFile()) {
+                try (JarFile jarFile = new JarFile(file)) {
+                    Manifest manifest = jarFile.getManifest();
+                    Attributes attributes = manifest.getMainAttributes();
+                    this.version = attributes.getValue(project);
+                }
             }
-
-
         } catch (Exception e) {
-            msg = e.getMessage();
+            System.err.println("Failed to load jar file or read manifest: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

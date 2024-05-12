@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="76ce784d-836c-414c-8c3e-3d8401a081b3" name="bdp-eg1">
+        <fileTransfer rootFolder="/usr/share/kafka" accessType="SFTP" host="bdp-eg1" port="22" sshConfigId="8cd64ccb-c0e4-48a2-9e39-1612c3751e61" sshConfig="altera@bdp-eg1:22 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>

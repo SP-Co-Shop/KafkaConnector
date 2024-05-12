@@ -33,7 +33,6 @@ public class HdfsClient {
         this.config = config;
     }
 
-
     public void init() throws IOException {
         this.fileSystem = FileSystem.newInstance(buildConfig());
     }
@@ -44,14 +43,17 @@ public class HdfsClient {
 
             try {
                 RecordEntry recordEntry = RecordParser.parse(record);
-                String convertingTime = LocalDateTime.parse(recordEntry.getTime(),DateTimeFormatter.ISO_LOCAL_DATE_TIME).format(formatter);
+                String convertingTime = LocalDateTime.parse(
+                        recordEntry.getTime(),
+                        DateTimeFormatter.ISO_OFFSET_DATE_TIME
+                ).format(formatter);
 
                 String hdfsPath = String.format("%s/%s/%s",
                         this.config.getHdfsPath(),
                         convertingTime,
-                        String.format("log-%s.text", partition));
+                        String.format("log-%s.json", partition));
 
-                writeToHDFS(hdfsPath,record.value().toString());
+                writeToHDFS(hdfsPath, record.value().toString());
             } catch (IOException | ParseException e) {
                 logger.error("Failed to write record to HDFS. Topic: {}, Partition: {}, Error: {}", topic, partition, e.getMessage(), e);
             }
@@ -74,7 +76,7 @@ public class HdfsClient {
         if (outWrapper == null) {
             Path hdfsPath = new Path(path);
 
-            logger.info("hdfsPath : {}",hdfsPath.toString());
+            logger.info("hdfsPath : {}", hdfsPath.toString());
             try {
                 FSDataOutputStream fsOut = null;
                 if (!fileSystem.exists(hdfsPath)) {
@@ -103,7 +105,7 @@ public class HdfsClient {
     public Configuration buildConfig() {
         Configuration hadoopConfig = new Configuration();
         String classpath = System.getProperty("java.class.path");
-        logger.info("========== {}",classpath);
+        logger.info("========== {}", classpath);
         hadoopConfig.addResource(Thread.currentThread().getContextClassLoader().getResourceAsStream("hadoop/core-site.xml"));
         hadoopConfig.addResource(Thread.currentThread().getContextClassLoader().getResourceAsStream("hadoop/hdfs-site.xml"));
         hadoopConfig.setInt("dfs.replication", 3);
@@ -117,7 +119,7 @@ public class HdfsClient {
 
     public void close() throws InterruptedException {
 
-        for (String path: outs.keySet()){
+        for (String path : outs.keySet()) {
             closeOutputStream(path);
         }
         outs.clear();
@@ -130,7 +132,7 @@ public class HdfsClient {
         int attempt = 0;
         boolean result = false;
 
-        while (attempt < failOnRetry){
+        while (attempt < failOnRetry) {
             try {
                 out.close();
                 result = true;
@@ -138,12 +140,12 @@ public class HdfsClient {
             } catch (Exception e) {
                 logger.error(e.getMessage(), e);
                 attempt += 1;
-                if (attempt != failOnRetry){
+                if (attempt != failOnRetry) {
                     Thread.sleep(1000);
                 }
             }
         }
-        if (!result){
+        if (!result) {
             logger.error("[ Fail ] ---> HDFS Output Stream close");
         }
     }

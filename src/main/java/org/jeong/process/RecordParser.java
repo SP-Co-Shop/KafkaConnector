@@ -16,6 +16,7 @@ public class RecordParser {
     public static RecordEntry parse(SinkRecord record) throws JsonProcessingException, ParseException {
 
         Logger logger = LoggerFactory.getLogger("JsonParser");
+
         try {
             RecordEntry recordEntry = objectMapper.readValue(record.value().toString(), RecordEntry.class);
             return recordEntry;

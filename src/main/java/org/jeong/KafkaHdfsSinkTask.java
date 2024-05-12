@@ -20,7 +20,6 @@ public class KafkaHdfsSinkTask extends SinkTask {
 
     private Logger logger = LoggerFactory.getLogger(this.getClass().getName());
 
-    private HdfsConfig config;
 
     private HdfsClient hdfsClient = null;
 
@@ -29,6 +28,7 @@ public class KafkaHdfsSinkTask extends SinkTask {
         return mainFest.getVersion();
     }
 
+    private HdfsConfig config;
     @Override
     public void start(Map<String, String> props) {
         logger.info("start kafka connector's task");
@@ -68,6 +68,5 @@ public class KafkaHdfsSinkTask extends SinkTask {
         }catch (Exception e){
             logger.info("Error closing HDFS client: {}",e.getMessage(), e);
         }
-
     }
 }
